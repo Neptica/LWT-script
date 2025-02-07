@@ -20,5 +20,5 @@ for line in open(temp, "r", encoding="UTF-8"):
         working += line
 
 
-fixed_output = "\n".join(fixed)
+fixed_output = "\n\n".join(fixed)
 open(output, "w", encoding="UTF-8").write(fixed_output)
