@@ -32,8 +32,7 @@ sed -E '
 
 ' "$output_file" > "$temp_file"
 
-sed 'n;s/.*/ /' "$temp_file" > "$output_file"
-sed 'N; /^\(.*\)\n\1$/d; N; /^\(.*\)\n\1$/d; P; D' "$temp_file" > "$output_file"
+python3 rdupes.py "$temp_file" "$output_file"
 
 rm -rf "$tempfile"
 
