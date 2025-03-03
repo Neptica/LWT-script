@@ -1,33 +1,27 @@
 #!/bin/bash
 
-underline() { echo -e "\033[1m$1\033[0m"; }
+underline() { echo -e "\033[4m\033[31m$1\033[0m\033[0m"; }
+bold() { echo -e "\033[1m\033[4m$1\033[0m\033[0m"; }
 
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 output language URL"
-    underline "Additional information:"
-    echo "Output destination must exclude file extension"
-    echo "Language must be two character code (en, de, fr)"
-    exit 1
+if [[ $# -ne 4 ]]; then
+  echo "Usage: $0 -opt output language URL"
+  bold "Additional information:"
+  echo "Option -a for the inclusion of audio and -o to download without audio"
+  echo "Output destination must exclude file extension"
+  echo "Language must be two character code (en, de, fr)"
+  underline "Notice: the file will be downloaded to your current working directory"
+  exit 1
 fi
 
-current_dir=$(pwd)
+dlSubs() {
+  echo "Checking available subtitles in $lang..."
+  response=$(yt-dlp --write-subs --sub-langs "$lang" --skip-download -o "$output_file" "$url" 2>&1)  # Capture command output, including errors
+  echo "Download options: $download"
 
-output_file="$current_dir/$1"
-lang="$2"
-url="$3"
-
-temp_file="$current_dir/temp1234567890.vtt"
-
-# set -e
-
-
-echo "Checking available subtitles in $lang..."
-response=$(yt-dlp --write-subs --sub-langs "$lang" --skip-download -o "$output_file" "$url" 2>&1)  # Capture command output, including errors
-
-if [[ $response == *"[info] There are no subtitles for the requested languages"* ]]; then
+  if [[ $response == *"[info] There are no subtitles for the requested languages"* ]]; then
     echo "No subtitles found. Downloading auto generated subtitles..."
 
-    response=$( yt-dlp --write-auto-subs --sub-langs "$lang" --skip-download -o "$output_file" "$url" 2>&1) 
+    yt-dlp --write-auto-subs --sub-langs "$lang" --skip-download -o "$output_file" "$url" 2>&1 
     touch "$temp_file"
     output_file="$output_file.$lang.vtt"
 
@@ -43,10 +37,9 @@ if [[ $response == *"[info] There are no subtitles for the requested languages"*
 
     ' "$output_file" > "$temp_file"
 
-    python3 rdupes.py "$temp_file" "$output_file"
-else
-    echo "Subtitles found! Processing file..."
-
+    python3 ~/bin/rdupes.py "$temp_file" "$output_file"
+  else
+    echo "Subs found"
     touch "$temp_file"
     output_file="$output_file.$lang.vtt"
 
@@ -58,10 +51,30 @@ else
 
     ' "$output_file" > "$temp_file"
 
-    python3 strip-native.py "$temp_file" "$output_file"
-fi
+    python3 ~/bin/strip-native.py "$temp_file" "$output_file"
+  fi
 
 
-rm -rf "$temp_file"
+  rm -rf "$temp_file"
 
-echo "File saved to: $output_file"
+  echo "File saved to: $output_file"
+}
+
+current_dir=$(pwd)
+
+output_file="$current_dir/$2"
+lang="$3"
+url="$4"
+declare download
+
+temp_file="$current_dir/temp1234567890.vtt"
+
+
+while getopts ":a:o" option; do
+  case $option in
+    a) 
+       echo "Downloading Audio and Script"; yt-dlp -x --audio-format mp3 $url; dlSubs;;
+    o) echo "Downloading Script"; dlSubs;;
+    ?) echo "Error: Invalid option -$OPTARG"; exit 1;;
+  esac
+done
